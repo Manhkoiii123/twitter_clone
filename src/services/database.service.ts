@@ -1,7 +1,10 @@
-import { Db, MongoClient, ServerApiVersion } from 'mongodb'
+import { Collection, Db, MongoClient, ServerApiVersion } from 'mongodb'
 import dotenv from 'dotenv'
+import User from '~/models/schemas/User.schema'
 dotenv.config()
+
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.6qpwx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
+
 class DatabaseService {
   private client: MongoClient
   private db: Db
@@ -24,6 +27,9 @@ class DatabaseService {
       // Ensures that the client will close when you finish/error
       // await this.client.close()
     }
+  }
+  get users(): Collection<User> {
+    return this.db.collection(process.env.DB_USER_COLLECTION as string)
   }
 }
 //tạo obj từ class Data
