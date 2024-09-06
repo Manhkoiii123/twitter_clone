@@ -240,3 +240,181 @@ async checkEmailExist(email: string) {
     return Boolean(user)
   }
 ```
+
+# Tạo Access Token và Refresh Token
+
+tạo `models/requests/User.request.ts` để định nghĩa inteface body gửi lên
+
+```ts
+export interface RegisterReqBody {
+  name: string
+  email: string
+  password: string
+  confirm_password: string
+  date_of_birth: string
+}
+```
+
+sang `user.controller.ts`
+
+```ts
+// hover vào cái req => copy kiểu dữ liệu của nó
+// cái any đầu tiên là cái req. gì đó
+// tìm đến cái req.body để định kiểu dữ liệu cho nó ()
+export const registerController = async (req: Request<ParamsDictionary, any, RegisterReqBody>, res: Response) => {
+  // const { email, password, confirm_password, date_of_birth, name } = req.body
+  try {
+    const result = await userSevice.register(req.body)
+    return res.json({
+      message: 'Register success',
+      result,
+    })
+  } catch (error) {
+    return res.status(400).json({
+      message: 'Register Failed',
+      error,
+    })
+  }
+}
+```
+
+sang cái `user.services.ts`
+
+```ts
+import { RegisterReqBody } from '~/models/requests/User.request'
+import User from '~/models/schemas/User.schema'
+import databaseService from '~/services/database.service'
+
+class UsersService {
+  async register(payload: RegisterReqBody) {
+    const result = await databaseService.users.insertOne(
+      new User({
+        ...payload,
+        date_of_birth: new Date(payload.date_of_birth), // convert từ isoString sang date
+      }),
+    )
+    return result
+  }
+  async checkEmailExist(email: string) {
+    const user = await databaseService.users.findOne({ email })
+    return Boolean(user)
+  }
+}
+const userSevice = new UsersService()
+export default userSevice
+```
+
+## hash password
+
+tạo `utils/crypto.ts`
+
+```ts
+import { createHash } from 'crypto'
+
+function sha256(content: string) {
+  return createHash('sha256').update(content).digest('hex')
+}
+export const hashPassword = (pass: string) => {
+  return sha256(pass + process.env.PASSWORD_SERCET)
+}
+```
+
+sử dụng trong `user.services`
+
+```ts
+async register(payload: RegisterReqBody) {
+    const result = await databaseService.users.insertOne(
+      new User({
+        ...payload,
+        password: hashPassword(payload.password),
+        date_of_birth: new Date(payload.date_of_birth), // convert từ isoString sang date
+      }),
+    )
+    return result
+  }
+```
+
+## tạo token
+
+`npm i jsonwebtoken`
+
+viết `utils/jwt.ts`
+
+```ts
+import jwt from 'jsonwebtoken'
+
+export const signToken = ({
+  payload,
+  privateKey = process.env.JWT_SERCET as string,
+  options = {
+    expiresIn: '1d',
+    algorithm: 'HS256',
+  },
+}: {
+  payload: string | object | Buffer
+  privateKey?: string
+  options?: jwt.SignOptions
+}) => {
+  return new Promise<string>((resolve, reject) => {
+    jwt.sign(payload, privateKey, options, (error, token) => {
+      if (error) throw reject(error)
+      resolve(token as string)
+    })
+  })
+}
+```
+
+sử dụng trong `user.services.ts`
+
+```ts
+import { TokenType } from '~/constants/enums'
+import { RegisterReqBody } from '~/models/requests/User.request'
+import User from '~/models/schemas/User.schema'
+import databaseService from '~/services/database.service'
+import { hashPassword } from '~/utils/crypto'
+import { signToken } from '~/utils/jwt'
+
+class UsersService {
+  private signAccessToken(userId: string) {
+    return signToken({
+      payload: {
+        userId,
+        token_type: TokenType.AccessToken,
+      },
+    })
+  }
+  private signRefreshToken(userId: string) {
+    return signToken({
+      payload: {
+        userId,
+        token_type: TokenType.RefreshToken,
+      },
+    })
+  }
+  async register(payload: RegisterReqBody) {
+    const result = await databaseService.users.insertOne(
+      new User({
+        ...payload,
+        password: hashPassword(payload.password),
+        date_of_birth: new Date(payload.date_of_birth), // convert từ isoString sang date
+      }),
+    )
+    const userId = result.insertedId.toString()
+    const [access_token, refresh_token] = await Promise.all([
+      this.signAccessToken(userId),
+      this.signRefreshToken(userId),
+    ])
+
+    return {
+      access_token,
+      refresh_token,
+    }
+  }
+  async checkEmailExist(email: string) {
+    const user = await databaseService.users.findOne({ email })
+    return Boolean(user)
+  }
+}
+const userSevice = new UsersService()
+export default userSevice
+```
