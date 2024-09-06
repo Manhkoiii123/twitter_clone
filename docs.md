@@ -205,3 +205,38 @@ khi đó call api register mà có lỗi (ví dụ như trong body ko truyền l
   }
 }
 ```
+
+# Kiểm tra email có tồn tại hay ko
+
+thêm cái custom trong cái validator email của registor
+
+```ts
+email: {
+      notEmpty: {
+        errorMessage: 'Email is required',
+        bail: true,
+      },
+      isEmail: {
+        errorMessage: 'Email is not valid',
+      },
+      trim: true,
+      custom: {
+        options: async (value) => {
+          const res = await userSevice.checkEmailExist(value)
+          if (res) {
+            return Promise.reject('Email already exists')
+          }
+          return true
+        },
+      },
+    },
+```
+
+hàm `userSevice.checkEmailExist(value)`
+
+```ts
+async checkEmailExist(email: string) {
+    const user = await databaseService.users.findOne({ email })
+    return Boolean(user)
+  }
+```
