@@ -1,10 +1,13 @@
+import { ObjectId } from 'mongodb'
 import { TokenType } from '~/constants/enums'
 import { RegisterReqBody } from '~/models/requests/User.request'
+import RefreshToken from '~/models/schemas/RefreshToken.schema'
 import User from '~/models/schemas/User.schema'
 import databaseService from '~/services/database.service'
 import { hashPassword } from '~/utils/crypto'
 import { signToken } from '~/utils/jwt'
-
+import dotenv from 'dotenv'
+dotenv.config()
 class UsersService {
   private signAccessToken(userId: string) {
     return signToken({
@@ -28,6 +31,9 @@ class UsersService {
       },
     })
   }
+  private signAccessTokenAndRefreshToken(userId: string) {
+    return Promise.all([this.signAccessToken(userId), this.signRefreshToken(userId)])
+  }
   async register(payload: RegisterReqBody) {
     const result = await databaseService.users.insertOne(
       new User({
@@ -37,11 +43,8 @@ class UsersService {
       }),
     )
     const userId = result.insertedId.toString()
-    const [access_token, refresh_token] = await Promise.all([
-      this.signAccessToken(userId),
-      this.signRefreshToken(userId),
-    ])
-
+    const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(userId)
+    databaseService.refreshToken.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
     return {
       access_token,
       refresh_token,
@@ -50,6 +53,14 @@ class UsersService {
   async checkEmailExist(email: string) {
     const user = await databaseService.users.findOne({ email })
     return Boolean(user)
+  }
+  async login(userId: string) {
+    const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(userId)
+    databaseService.refreshToken.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
+    return {
+      access_token,
+      refresh_token,
+    }
   }
 }
 const userSevice = new UsersService()

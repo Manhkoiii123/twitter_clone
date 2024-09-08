@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
-
+import dotenv from 'dotenv'
+dotenv.config()
 export const signToken = ({
   payload,
   privateKey = process.env.JWT_SERCET as string,
