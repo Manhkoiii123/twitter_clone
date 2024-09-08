@@ -971,3 +971,223 @@ khi đó send request sẽ trả về
     }
 }
 ```
+
+tối ưu lại file `errorMiddleware.ts` để có thể hiển thị các lỗi khác nữa
+
+```ts
+import { NextFunction, Request, Response } from 'express'
+import { omit } from 'lodash'
+import HTTP_STATUS from '~/constants/httpStatus'
+import { ErrorWithStatus } from '~/models/Errors'
+
+export const defaultErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  // cần trả về đúng định dạng lỗi
+  if (err instanceof ErrorWithStatus) {
+    return res.status(err.status).json(omit(err, ['status']))
+  }
+  //chuyển enumrable của info thành true để có thể lấy ra được
+  Object.getOwnPropertyNames(err).forEach((key) => {
+    Object.defineProperty(err, key, {
+      enumerable: true,
+    })
+  })
+  res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    message: err.message,
+    errorInfo: omit(err, ['stack']),
+  })
+}
+```
+
+# Xử lý logic login
+
+vào `user.middleware.ts` để validate
+
+```ts
+export const loginValidator = validate(
+  checkSchema({
+    email: {
+      notEmpty: {
+        errorMessage: 'Email is required',
+        bail: true,
+      },
+      isEmail: {
+        errorMessage: 'Email is not valid',
+      },
+      trim: true,
+      custom: {
+        options: async (value, { req }) => {
+          const user = await databaseService.users.findOne({ email: value })
+          if (user === null) {
+            throw new Error('Email or password wrong')
+          }
+          //truyền user từ bên này sang bên controller
+          req.user = user
+          return true
+        },
+      },
+    },
+    password: {
+      notEmpty: true,
+      isString: true,
+      isLength: {
+        options: { min: 6, max: 100 },
+        errorMessage: 'Password must be between 6 and 100 characters',
+      },
+      isStrongPassword: {
+        options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+      },
+      errorMessage:
+        'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+    },
+  }),
+)
+```
+
+sang `user.controller.ts` để handle
+
+login thì phải tạo accToken và ref token => cần userId thì lấy id từ đâu ra
+
+query đến db => dựa vào emial để lấy userId (do email là duy nhất)
+
+lại phải check tồn tại 1 lần nữa nên trên code validator sẽ dùng 1 cái req để gắn cái user vào req để đỡ phải tìm lại bên services và bên controller (đã có code ở trên phần validator)
+
+`user.controller.ts`
+
+```ts
+export const loginController = async (req: Request, res: Response) => {
+  const { user }: any = req
+  const { _id } = user
+  const ans = await userSevice.login(_id.toString())
+  return res.json({
+    message: 'login success',
+    ans,
+  })
+}
+```
+
+`user.service.ts`
+
+```ts
+private signAccessTokenAndRefreshToken(userId: string) {
+    return Promise.all([this.signAccessToken(userId), this.signRefreshToken(userId)])
+  }
+async login(userId: string) {
+    const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(userId)
+    return {
+      access_token,
+      refresh_token,
+    }
+  }
+```
+
+khai báo type cho cái user ở trên (còn any)
+sang bên file `type.d.ts` để định type mở lên cái type lên cái req
+
+```ts
+import { Request } from 'express'
+import User from '~/models/schemas/User.schema'
+declare module 'express' {
+  interface Request {
+    user?: User
+  }
+}
+```
+
+khi đó file controller sửa thành
+
+```ts
+export const loginController = async (req: Request, res: Response) => {
+  const user = req.user as User
+  const { _id } = user
+  const ans = await userSevice.login(_id.toString())
+  return res.json({
+    message: 'login success',
+    ans,
+  })
+}
+```
+
+check password ngay trong cái validator lúc mà check email luôn được => ok
+
+`user.middleware.ts`
+
+```ts
+export const loginValidator = validate(
+  checkSchema({
+    email: {
+      notEmpty: {
+        errorMessage: 'Email is required',
+        bail: true,
+      },
+      isEmail: {
+        errorMessage: 'Email is not valid',
+      },
+      trim: true,
+      custom: {
+        options: async (value, { req }) => {
+          const user = await databaseService.users.findOne({ email: value, password: hashPassword(req.body.password) })
+          if (user === null) {
+            throw new Error('Email or password wrong')
+          }
+          //truyền user từ bên này sang bên controller
+          req.user = user
+          return true
+        },
+      },
+    },
+    password: {
+      notEmpty: true,
+      isString: true,
+      isLength: {
+        options: { min: 6, max: 100 },
+        errorMessage: 'Password must be between 6 and 100 characters',
+      },
+      isStrongPassword: {
+        options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+      },
+      errorMessage:
+        'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+    },
+  }),
+)
+```
+
+khi login vaf register xong thì phải lưu cái AT và RT vào 1 bảng => ok
+
+tạo schema
+
+```ts
+import { ObjectId } from 'mongodb'
+type RefreshTokenType = {
+  _id?: ObjectId
+  token: string
+  created_at?: Date
+  user_id: ObjectId
+}
+export default class RereshToken {
+  _id?: ObjectId
+  token: string
+  created_at: Date
+  user_id: ObjectId
+  constructor({ _id, token, created_at, user_id }: RefreshTokenType) {
+    this._id = _id
+    this.token = token
+    this.created_at = created_at || new Date()
+    this.user_id = user_id
+  }
+}
+```
+
+sang `database.service.ts`
+
+```ts
+ get refreshToken(): Collection<RefreshToken> {
+    return this.db.collection(process.env.DB_REFRESH_TOKEN_COLLECTION as string) //DB_REFRESH_TOKEN_COLLECTION="refresh_tokens"
+  }
+```
+
+thêm dòng này vào mỗi cái lúc register và login => lúc tạo token
+
+```ts
+databaseService.refreshToken.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
+```

@@ -6,7 +6,7 @@ const usersRouter = Router()
 usersRouter.use((req, res, next) => {
   next()
 })
-usersRouter.post('/login', loginValidator, loginController)
+usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
 /**
  * đăng kí
  * path:/users/register

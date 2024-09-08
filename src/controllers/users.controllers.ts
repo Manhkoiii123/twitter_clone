@@ -2,15 +2,14 @@ import { NextFunction, Request, Response } from 'express'
 import userSevice from '~/services/user.services'
 import { ParamsDictionary } from 'express-serve-static-core'
 import { RegisterReqBody } from '~/models/requests/User.request'
-export const loginController = (req: Request, res: Response) => {
-  const { email, password } = req.body
-  if (email === 'manh@gmail.com' && password === '1') {
-    return res.status(200).json({
-      message: 'login successfully',
-    })
-  }
-  return res.status(400).json({
-    message: 'login failed',
+import User from '~/models/schemas/User.schema'
+export const loginController = async (req: Request, res: Response) => {
+  const user = req.user as User
+  const { _id } = user
+  const ans = await userSevice.login(_id.toString())
+  return res.json({
+    message: 'login success',
+    ans,
   })
 }
 // hover vào cái req => copy kiểu dữ liệu của nó
