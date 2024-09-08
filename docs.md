@@ -1191,3 +1191,210 @@ thêm dòng này vào mỗi cái lúc register và login => lúc tạo token
 ```ts
 databaseService.refreshToken.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
 ```
+
+# Access token middleware cho logout
+
+logout method `post` gửi lên cái refresh token lên + header bearer + accessToken => gửi ref lên để xóa cái ref trong db đi là ok
+
+<mark>
+call api => gửi lên => validate cái acc_token (có gửi lên hay ko, có hợp lệ hay ko) => gán `decoded_authorization` vào req => gán để sau này nếu cần thì có cái thông tin của người louout => middleware check refresh_token (tồn tại, verify, có trong db hay ko) => gán vào `decoded_ref_token` vào req => xóa refresh_token trong db => trả thông báo thành công cho ng dùng
+</mark>
+
+trong cái `checkSchema` của cái validator thì tham số thứ 2 là vùng để check => mặc định thì nó check all
+
+viết hàm `verifyToken` bên cái `jwt.ts`
+
+```ts
+export const verifyToken = ({
+  token,
+  privateKey = process.env.JWT_SERCET as string,
+}: {
+  token: string
+  privateKey?: string
+}) => {
+  return new Promise<jwt.JwtPayload>((resolve, reject) => {
+    // hmf veri tham só thứ 3 là options || callback
+    jwt.verify(token, privateKey, (error, decoded) => {
+      if (error) throw reject(error)
+      resolve(decoded as jwt.JwtPayload)
+    })
+  })
+}
+```
+
+viết cái `user.middleware.ts` để validate
+
+```ts
+export const accessTokenValidator = validate(
+  checkSchema(
+    {
+      Authorization: {
+        notEmpty: {
+          errorMessage: 'AccessToken is required',
+        },
+        custom: {
+          options: async (value: string, { req }) => {
+            const access_token = value.split(' ')[1]
+            if (!access_token) {
+              throw new ErrorWithStatus({
+                message: 'AccessToken is required',
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
+
+            const decoded_authorization = await verifyToken({ token: access_token })
+            req.decoded_authorization = decoded_authorization
+            return true
+          },
+        },
+      },
+    },
+    ['headers'],
+  ),
+)
+```
+
+# Refresh token middleware và logout logic
+
+checkschema của refreshToken
+
+```ts
+export const refreshTokenValidator = validate(
+  checkSchema(
+    {
+      refresh_token: {
+        notEmpty: {
+          errorMessage: 'RefreshToken is required',
+        },
+        custom: {
+          options: async (value: string, { req }) => {
+            try {
+              const [decoded_refresh_token, refresh_token] = await Promise.all([
+                verifyToken({ token: value }),
+                databaseService.refreshTokens.findOne({ token: value }), //check trong db có ko
+              ])
+              if (refresh_token === null) {
+                //ko thấy trong db
+                throw new ErrorWithStatus({
+                  message: 'RefreshToken used or not exist',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+              req.decoded_refresh_token = decoded_refresh_token
+            } catch (error) {
+              // nếu ko xử lí thế này mà để mỗi 3 dòng throw trong if thì nó luôn rơi vào case này
+              // muốn bắt cả case đã sử dụng ở trên (do nếu lỗi ở trên thì nó cũng tự rơi vào catch)
+              if (error instanceof JsonWebTokenError) {
+                throw new ErrorWithStatus({
+                  message: 'RefreshToken is invalid',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+              throw error
+            }
+          },
+        },
+      },
+    },
+    ['body'],
+  ),
+)
+```
+
+=> sử dụng bên routes (chưa có services)
+
+```ts
+usersRouter.post(
+  '/logout',
+  accessTokenValidator,
+  refreshTokenValidator,
+  wrapRequestHandler((req, res) => {
+    res.json({ message: 'logout success' })
+  }),
+)
+```
+
+`controller`
+
+```ts
+export const logoutController = async (req: Request, res: Response, next: NextFunction) => {
+  const { refresh_token } = req.body
+  const result = await userSevice.logout(refresh_token)
+  return res.json({
+    message: result.message,
+  })
+}
+```
+
+`serveice`
+
+```ts
+  async logout(refresh_token: string) {
+    await databaseService.refreshTokens.deleteOne({ token: refresh_token })
+    return {
+      message: 'logout success',
+    }
+  }
+```
+
+tối ưu hiện lỗi của accessToken
+
+```ts
+export const accessTokenValidator = validate(
+  checkSchema(
+    {
+      Authorization: {
+        notEmpty: {
+          errorMessage: 'AccessToken is required',
+        },
+        custom: {
+          options: async (value: string, { req }) => {
+            const access_token = value.split(' ')[1]
+            if (!access_token) {
+              throw new ErrorWithStatus({
+                message: 'AccessToken is required',
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
+            try {
+              const decoded_authorization = await verifyToken({ token: access_token })
+              req.decoded_authorization = decoded_authorization
+            } catch (error) {
+              throw new ErrorWithStatus({
+                message: (error as JsonWebTokenError).message,
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
+            return true
+          },
+        },
+      },
+    },
+    ['headers'],
+  ),
+)
+```
+
+thêm kiểu dữ liệu cho cái `req.` (ví dụ : req.decoded_authorization => đang là any)
+
+vào file `type.d.ts`
+
+```ts
+import { Request } from 'express'
+import { TokenPayload } from '~/models/requests/User.request'
+import User from '~/models/schemas/User.schema'
+declare module 'express' {
+  interface Request {
+    user?: User
+    decoded_authorization?: TokenPayload
+    decoded_refresh_token?: TokenPayload
+  }
+}
+```
+
+lúc chèn vào req bên `middleware`
+
+```ts
+;(req as Request).decoded_refresh_token = decoded_refresh_token
+// tương tự cho cái decode_auth...
+```

@@ -9,10 +9,10 @@ import { signToken } from '~/utils/jwt'
 import dotenv from 'dotenv'
 dotenv.config()
 class UsersService {
-  private signAccessToken(userId: string) {
+  private signAccessToken(user_id: string) {
     return signToken({
       payload: {
-        userId,
+        user_id,
         token_type: TokenType.AccessToken,
       },
       options: {
@@ -20,10 +20,10 @@ class UsersService {
       },
     })
   }
-  private signRefreshToken(userId: string) {
+  private signRefreshToken(user_id: string) {
     return signToken({
       payload: {
-        userId,
+        user_id,
         token_type: TokenType.RefreshToken,
       },
       options: {
@@ -31,8 +31,8 @@ class UsersService {
       },
     })
   }
-  private signAccessTokenAndRefreshToken(userId: string) {
-    return Promise.all([this.signAccessToken(userId), this.signRefreshToken(userId)])
+  private signAccessTokenAndRefreshToken(user_id: string) {
+    return Promise.all([this.signAccessToken(user_id), this.signRefreshToken(user_id)])
   }
   async register(payload: RegisterReqBody) {
     const result = await databaseService.users.insertOne(
@@ -44,7 +44,7 @@ class UsersService {
     )
     const userId = result.insertedId.toString()
     const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(userId)
-    databaseService.refreshToken.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
+    databaseService.refreshTokens.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
     return {
       access_token,
       refresh_token,
@@ -56,10 +56,16 @@ class UsersService {
   }
   async login(userId: string) {
     const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(userId)
-    databaseService.refreshToken.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
+    databaseService.refreshTokens.insertOne(new RefreshToken({ user_id: new ObjectId(userId), token: refresh_token }))
     return {
       access_token,
       refresh_token,
+    }
+  }
+  async logout(refresh_token: string) {
+    await databaseService.refreshTokens.deleteOne({ token: refresh_token })
+    return {
+      message: 'logout success',
     }
   }
 }
