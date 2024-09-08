@@ -602,3 +602,372 @@ export const registerController = async (
 ```
 
 # Bài 87: Chuẩn hóa bộ xử lý lỗi
+
+bên cái middleware có cá trường hợp cho ra lỗi 422(validate) có 1 vai trường hợp ko phải 422
+
+ví dụ như ko có token => 401
+
+làm sao để phân biệt đưuọc trả về 401, lúc nào trả về 422
+
+thường thì 422 là lỗi validation => chủ động trả về ở lúc custom cái validation tại file `validation.ts`
+
+```ts
+import express from 'express'
+import { body, validationResult, ContextRunner, ValidationChain } from 'express-validator'
+import { RunnableValidationChains } from 'express-validator/lib/middlewares/schema'
+
+// cái kiểu của validations lấy ở đâu
+// ấn vào cái checkSchema bên cái user.middleware để lấy kiểu dữ liệu
+export const validate = (validations: RunnableValidationChains<ValidationChain>) => {
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    await validations.run(req) // check lỗi
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ errors: errors.mapped() }) // tại đây
+    }
+    next()
+  }
+}
+```
+
+như trên thì lúc mà chạy cái `user.middleware` (lúc mà check schema validate dữ liệu ) => nếu có lỗi lúc nào cũng trả ra 422
+
+`ví dụ như muốn khi tìm ko ra email => trả về lỗi 401 thì sao`
+
+bên hàm `validation.ts` => log cái error ra
+
+```ts
+export const validate = (validations: RunnableValidationChains<ValidationChain>) => {
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    await validations.run(req) // check lỗi
+    const errors = validationResult(req)
+    const errorsObject = errors.mapped()
+    console.log('🚀 ~ return ~ errorsObject:', errorsObject)
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ errors: errors.mapped() })
+    }
+    next()
+  }
+}
+```
+
+nếu mà đăng kí email đã tồn tại thì log ra được cái này
+
+```ts
+{
+    "errors": {
+        "email": {
+            "type": "field",
+            "value": "manhtranduc0202@gmail.com",
+            "msg": "Email already exists",
+            "path": "email",
+            "location": "body"
+        }
+    }
+}
+```
+
+do cái bên `checkSchema` bên cái `user.middleware` trả về tại cái custom của lúc validate email
+
+```ts
+email: {
+      notEmpty: {
+        errorMessage: 'Email is required',
+        bail: true,
+      },
+      isEmail: {
+        errorMessage: 'Email is not valid',
+      },
+      trim: true,
+      custom: {
+        options: async (value) => {
+          const res = await userSevice.checkEmailExist(value)
+          if (res) {
+            // return Promise.reject('Email already exists')
+            throw {message:'Email already exists',status:401}// khi đó cái msg ở cái log errors nó sẽ là cái object kia
+          }
+          return true
+        },
+      },
+    },
+```
+
+=> lặp qua cái mảng errors kia nếu mà cái message nào có cái status !== 422 thì mình cho trả về cái error như cái định dạng obj, còn bình thường thì trả về 422 như thường
+
+## quy định format lỗi
+
+1. lỗi thông thường thì trả về
+
+```ts
+  {
+    message:string
+    error_info?: any
+  }
+```
+
+2. lỗi validation(422)
+
+```ts
+  {
+    message:string,
+    errors:{
+      [field:string] : {
+        msg: string
+        [key:string]:any
+      }
+    }
+  }
+```
+
+## Cài đặt
+
+1. tạo 1 cái class bên `models/Errors.ts`
+
+```ts
+export class ErrorWithStatus {
+  message: string
+  status: number
+  constructor({ message, status }: { message: string; status: number }) {
+    this.message = message
+    this.status = status
+  }
+}
+```
+
+2. qua bên `user.middleware.ts` sử dụng như sau
+
+```ts
+email: {
+      notEmpty: {
+        errorMessage: 'Email is required',
+        bail: true,
+      },
+      isEmail: {
+        errorMessage: 'Email is not valid',
+      },
+      trim: true,
+      custom: {
+        options: async (value) => {
+          const res = await userSevice.checkEmailExist(value)
+          if (res) {
+            // return Promise.reject('Email already exists')
+            throw new ErrorWithStatus({
+              message: 'Email already exists',
+              status: 400,
+            })
+          }
+          return true
+        },
+      },
+    },
+```
+
+nếu mà trên cái class `ErrorWithStatus` có `extend class Error` mặc định thì cái lỗi trả về của `user.middleware.ts` nó chỉ nhận được cái message là `Email already exists` thôi chứ ko có trả về cái status nữa => ko hay => ko dùng cái `extend class Error` đấy nữa
+
+(do cái express validator => chứ thực tế là dùng hay hơn là ko dùng)
+
+khi đó trả ra lỗi nó sẽ như sau
+
+```ts
+{
+    "errors": {
+        "email": {
+            "type": "field",
+            "value": "manhtranduc0202@gmail.com",
+            "msg": {
+                "message": "Email already exists",
+                "status": 400
+            },
+            "path": "email",
+            "location": "body"
+        }
+    }
+}
+```
+
+sang bên cái `validation.ts` để lặp qua các cái lỗi để lấy ra các lỗi có status đặc biệt mà muốn custom
+
+tạm thời để đó đã => tạo 1 cái constants để lưu các status http
+
+tạo `constants/HTTP_STATUS.ts`
+
+```ts
+const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  UNPROCESSABLE_ENTITY: 422,
+  UNAUTHORIZED: 401,
+  NOT_FOUND: 404,
+  INTERNAL_SERVER_ERROR: 500,
+}
+export default HTTP_STATUS
+```
+
+lưu ý ko trả về errors trong cái validation này dồn cai eror vào trong cái middleware sử dụng bên index.ts(file to nhất) => là cái error default
+
+```ts
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  res.status(400).json({ error: err.message })
+})
+```
+
+viết hàm bên `validation.ts`
+
+```ts
+import express from 'express'
+import { body, validationResult, ContextRunner, ValidationChain } from 'express-validator'
+import { RunnableValidationChains } from 'express-validator/lib/middlewares/schema'
+import HTTP_STATUS from '~/constants/HTTP_STATUS'
+import { ErrorWithStatus } from '~/models/Errors'
+
+// cái kiểu của validations lấy ở đâu
+// ấn vào cái checkSchema bên cái user.middleware để lấy kiểu dữ liệu
+export const validate = (validations: RunnableValidationChains<ValidationChain>) => {
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    await validations.run(req) // check lỗi
+    const errors = validationResult(req)
+    const errorsObject = errors.mapped()
+    for (const key in errorsObject) {
+      const { msg } = errorsObject[key]
+      // dòng dưới có nghĩa là msg có kiểu là ErrorWithStatus và có status !== 422
+      if (msg instanceof ErrorWithStatus && msg.status !== HTTP_STATUS.UNPROCESSABLE_ENTITY) {
+        return next(msg)
+      }
+    }
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ errors: errors.mapped() })
+    }
+    next()
+  }
+}
+```
+
+khi dó cái lỗi `Email already exists` có mã lỗi là bao nhiêu cũng được miễn là nó khác 422 (ví dụ trên cái checkSchema ở `user.middleware.ts`) thì nó chỉ trả ra cái này
+
+```ts
+{
+    "error": "Email already exists"
+}
+// đồng thời trên đó sẽ trả ra lỗi (ở trên cái thnah thông báo chứ ko hiện lên cái trả về)  là 400 Bad Request do cái mặc định tại cái index.ts đã nói ở trên
+```
+
+luồng chạy
+
+request vào user.router => user.register => chạy đến cái validation => lỗi tại cái validate => chạy cái `next(msg)` => chay đến cái `middleware` xử lí lỗi bên `index.js`
+
+thấy lúc nào nó cũng trả ra lỗi là 400 thì ko hay (bên cái middleware của index)
+
+=> tách cái đó ra thành 1 file `middlewares/errorMiddleware.ts`
+
+```ts
+import { NextFunction, Request, Response } from 'express'
+import { omit } from 'lodash'
+import HTTP_STATUS from '~/constants/HTTP_STATUS'
+
+export const defaultErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  // cần trả về đúng định dạng lỗi
+  res.status(err.status || HTTP_STATUS.INTERNAL_SERVER_ERROR).json(omit(err, ['status'])) // bỏ cái status đi (do http auto tự trả về rồi)
+}
+```
+
+sử dụng bên `index.ts`
+
+```ts
+app.use(defaultErrorHandler)
+```
+
+như vậy là cái email lúc validate bên user.middleware nó sẽ trả ra lỗi bao nhiêu thì cái index nó sẽ trả ra default là như thế(do chạy vào `next(msg)`)
+
+đã xử lí xong case khác 422
+
+vậy còn 422 thì sao
+
+tạo thêm 1 cái class eror nữa bên file `Errors.ts`
+
+```ts
+// dành cho 422
+// type ErrorsType = Record<string, string> // sẽ có dạng {[key:string] : string}
+// cái obj phía sau phụ thuộc vào cái mà lỗi trả về (ví dụ đang dùng validator của express nó trả ra thế kia)
+type ErrorsType = Record<
+  string,
+  {
+    msg: string
+    [key: string]: any
+  }
+>
+export class EntityError extends ErrorWithStatus {
+  errors: ErrorsType
+  constructor({ message = USER_MESSAGES.VALIDATION_ERROR, errors }: { message: string; errors: ErrorsType }) {
+    // status luôn là 422
+    super({ message, status: HTTP_STATUS.UNPROCESSABLE_ENTITY })
+    this.errors = errors
+  }
+}
+```
+
+xử lí lỗi 422 bên file `validation.ts`
+
+```ts
+import express from 'express'
+import { body, validationResult, ContextRunner, ValidationChain } from 'express-validator'
+import { RunnableValidationChains } from 'express-validator/lib/middlewares/schema'
+import HTTP_STATUS from '~/constants/httpStatus'
+
+import { EntityError, ErrorWithStatus } from '~/models/Errors'
+
+// cái kiểu của validations lấy ở đâu
+// ấn vào cái checkSchema bên cái user.middleware để lấy kiểu dữ liệu
+export const validate = (validations: RunnableValidationChains<ValidationChain>) => {
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    await validations.run(req) // check lỗi
+    const errors = validationResult(req)
+    //ko có lỗi => chạy tiếp luôn
+    if (errors.isEmpty()) {
+      return next()
+    }
+    // có lỗi
+    const errorsObject = errors.mapped()
+    const entityError = new EntityError({
+      errors: {},
+    })
+    // lặp qua lỗi
+    for (const key in errorsObject) {
+      const { msg } = errorsObject[key]
+      // dòng dưới có nghĩa là msg có kiểu là ErrorWithStatus và có status !== 422 (thường là lỗi ko phải do validate)
+      if (msg instanceof ErrorWithStatus && msg.status !== HTTP_STATUS.UNPROCESSABLE_ENTITY) {
+        return next(msg)
+      }
+      //thường là lỗi validate
+      // lỗi 422 rơi vào đây => add nó vào mảng entityError
+      entityError.errors[key] = errorsObject[key]
+    }
+
+    next(entityError)
+  }
+}
+```
+
+khi đó send request sẽ trả về
+
+```ts
+{
+  //lỗi 422
+    "message": "Validation error",
+    "errors": {
+        "confirm_password": {
+            "type": "field",
+            "value": "Manhkoiii123",
+            "msg": "Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol",
+            "path": "confirm_password",
+            "location": "body"
+        },
+        "email": {
+            "type": "field",
+            "value": "manhtranduc0202@gmail.com",
+            "msg": "Email already exists",
+            "path": "email",
+            "location": "body"
+        }
+    }
+}
+```
