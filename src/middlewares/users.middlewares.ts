@@ -141,12 +141,9 @@ export const accessTokenValidator = validate(
   checkSchema(
     {
       Authorization: {
-        notEmpty: {
-          errorMessage: 'AccessToken is required',
-        },
         custom: {
           options: async (value: string, { req }) => {
-            const access_token = value.split(' ')[1]
+            const access_token = (value || '').split(' ')[1]
             if (!access_token) {
               throw new ErrorWithStatus({
                 message: 'AccessToken is required',
@@ -177,11 +174,15 @@ export const refreshTokenValidator = validate(
   checkSchema(
     {
       refresh_token: {
-        notEmpty: {
-          errorMessage: 'RefreshToken is required',
-        },
+        trim: true,
         custom: {
           options: async (value: string, { req }) => {
+            if (!value) {
+              throw new ErrorWithStatus({
+                message: 'RefreshToken is required',
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
             try {
               const [decoded_refresh_token, refresh_token] = await Promise.all([
                 verifyToken({ token: value, privateKey: process.env.JWT_SERCET_REFRESH_TOKEN as string }),
@@ -198,6 +199,42 @@ export const refreshTokenValidator = validate(
             } catch (error) {
               // nếu ko xử lí thế này mà để mỗi 3 dòng throw trong if thì nó luôn rơi vào case này
               // muốn bắt cả case đã sử dụng ở trên (do nếu lỗi ở trên thì nó cũng tự rơi vào catch)
+              if (error instanceof JsonWebTokenError) {
+                throw new ErrorWithStatus({
+                  message: 'RefreshToken is invalid',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+              throw error
+            }
+          },
+        },
+      },
+    },
+    ['body'],
+  ),
+)
+export const emailVerifyTokenValidator = validate(
+  checkSchema(
+    {
+      email_verify_token: {
+        trim: true,
+        custom: {
+          options: async (value: string, { req }) => {
+            if (!value) {
+              throw new ErrorWithStatus({
+                message: 'EmailVerifyToken is required',
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
+            try {
+              const decoded_email_verify_token = await verifyToken({
+                token: value,
+                privateKey: process.env.JWT_SERCET_EMAIL_VERIFY_TOKEN as string,
+              })
+
+              ;(req as Request).decoded_email_verify_token = decoded_email_verify_token
+            } catch (error) {
               if (error instanceof JsonWebTokenError) {
                 throw new ErrorWithStatus({
                   message: 'RefreshToken is invalid',

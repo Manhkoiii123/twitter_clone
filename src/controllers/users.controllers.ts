@@ -1,8 +1,11 @@
 import { NextFunction, Request, Response } from 'express'
 import userSevice from '~/services/user.services'
 import { ParamsDictionary } from 'express-serve-static-core'
-import { LogoutReqBody, RegisterReqBody } from '~/models/requests/User.request'
+import { LogoutReqBody, RegisterReqBody, TokenPayload } from '~/models/requests/User.request'
 import User from '~/models/schemas/User.schema'
+import databaseService from '~/services/database.service'
+import HTTP_STATUS from '~/constants/httpStatus'
+import { ObjectId } from 'mongodb'
 export const loginController = async (req: Request, res: Response) => {
   const user = req.user as User
   const { _id } = user
@@ -36,5 +39,27 @@ export const logoutController = async (
   const result = await userSevice.logout(refresh_token)
   return res.json({
     message: result.message,
+  })
+}
+export const emailVerifyValidator = async (req: Request, res: Response, next: NextFunction) => {
+  const { user_id } = req.decoded_email_verify_token as TokenPayload
+  const user = await databaseService.users.findOne({
+    _id: new ObjectId(user_id),
+  })
+  if (!user) {
+    return res.status(HTTP_STATUS.NOT_FOUND).json({
+      message: 'User not found',
+    })
+  }
+  // đã verify rồi thì nó là '' thì mình sẽ ko báo lỗi mà trả về status OK với message là đã verify thành công trước đó rồi
+  if (user.email_verify_token === '') {
+    return res.status(HTTP_STATUS.OK).json({
+      message: 'Email already verified',
+    })
+  }
+  const result = await userSevice.verifyEmail(user_id)
+  return res.json({
+    message: 'Email verify success',
+    result,
   })
 }
