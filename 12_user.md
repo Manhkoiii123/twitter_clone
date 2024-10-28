@@ -249,3 +249,97 @@ async resendEmailVerify(user_id: string) {
     }
   }
 ```
+
+# Quên Mật Khẩu
+
+viết `route`
+
+```ts
+usersRouter.post('/forgot-password', forgotPasswordValidator, wrapRequestHandler(forgorPasswordController))
+```
+
+viết validator bên middleware
+
+```ts
+export const forgotPasswordValidator = validate(
+  checkSchema(
+    {
+      email: {
+        notEmpty: {
+          errorMessage: 'Email is required',
+          bail: true,
+        },
+        isEmail: {
+          errorMessage: 'Email is not valid',
+        },
+        trim: true,
+        custom: {
+          options: async (value, { req }) => {
+            const user = await databaseService.users.findOne({
+              email: value,
+            })
+            if (user === null) {
+              throw new Error('Email not found')
+            }
+            req.user = user
+            return true
+          },
+        },
+      },
+    },
+    ['body'],
+  ),
+)
+```
+
+viết service
+
+```ts
+private signForgotPasswordToken(user_id: string) {
+    return signToken({
+      payload: {
+        user_id,
+        token_type: TokenType.EmailVerifyToken,
+      },
+      options: {
+        expiresIn: process.env.FORGOT_PASSWORD_TOKEN_EXPIRES_IN,
+      },
+      privateKey: process.env.JWT_SERCET_FORGOT_PASSWORD_TOKEN as string,
+    })
+  }
+  async forgotPassword(user_id: string) {
+    const forgot_password_token = await this.signForgotPasswordToken(user_id)
+    await databaseService.users.updateOne(
+      {
+        _id: new ObjectId(user_id),
+      },
+      {
+        $set: {
+          forgot_password_token,
+        },
+        $currentDate: {
+          updated_at: true,
+        },
+      },
+    )
+    // gửi email => ch làm
+    console.log('forgot token : ', forgot_password_token)
+    return {
+      message: 'Forgot password success',
+    }
+  }
+```
+
+hoàn thiện `controller`
+
+```ts
+export const forgorPasswordController = async (
+  req: Request<ParamsDictionary, any, ForgorPasswordReqBody>,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { _id } = req.user as User
+  const result = await userSevice.forgotPassword(_id.toString())
+  return res.json(result)
+}
+```
