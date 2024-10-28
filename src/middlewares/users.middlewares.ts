@@ -2,6 +2,7 @@ import { Request } from 'express'
 import { checkSchema } from 'express-validator'
 import { JsonWebTokenError } from 'jsonwebtoken'
 import { capitalize } from 'lodash'
+import { ObjectId } from 'mongodb'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ErrorWithStatus } from '~/models/Errors'
 import databaseService from '~/services/database.service'
@@ -272,6 +273,58 @@ export const forgotPasswordValidator = validate(
             }
             req.user = user
             return true
+          },
+        },
+      },
+    },
+    ['body'],
+  ),
+)
+export const verifyForgotPasswordValidator = validate(
+  checkSchema(
+    {
+      forgot_password_token: {
+        trim: true,
+        custom: {
+          options: async (value: string, { req }) => {
+            if (!value) {
+              throw new ErrorWithStatus({
+                message: 'ForgotPasswordToken is required',
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
+            try {
+              const decoded_forgot_password_token = await verifyToken({
+                token: value,
+                privateKey: process.env.JWT_SERCET_FORGOT_PASSWORD_TOKEN as string,
+              })
+              const { user_id } = decoded_forgot_password_token
+              const user = await databaseService.users.findOne({ _id: new ObjectId(user_id) }) //check trong db có ko
+
+              if (user === null) {
+                //ko thấy trong db
+                throw new ErrorWithStatus({
+                  message: 'User not found',
+                  status: HTTP_STATUS.NOT_FOUND,
+                })
+              }
+              if (user.forgot_password_token !== value) {
+                throw new ErrorWithStatus({
+                  message: 'ForgotPasswordToken is invalid',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+            } catch (error) {
+              // nếu ko xử lí thế này mà để mỗi 3 dòng throw trong if thì nó luôn rơi vào case này
+              // muốn bắt cả case đã sử dụng ở trên (do nếu lỗi ở trên thì nó cũng tự rơi vào catch)
+              if (error instanceof JsonWebTokenError) {
+                throw new ErrorWithStatus({
+                  message: 'ForgotPasswordToken is invalid',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+              throw error
+            }
           },
         },
       },

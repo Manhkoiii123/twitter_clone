@@ -24,3 +24,6 @@ export interface VerifyEmailReqBody {
 export interface ForgorPasswordReqBody {
   email: string
 }
+export interface VerifyForgorPasswordReqBody {
+  forgot_password_token: string
+}
