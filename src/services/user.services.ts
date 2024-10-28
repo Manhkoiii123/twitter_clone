@@ -37,12 +37,24 @@ class UsersService {
     return signToken({
       payload: {
         user_id,
+        token_type: TokenType.ForgotPasswordToken,
+      },
+      options: {
+        expiresIn: process.env.JWT_SERCET_FORGOT_PASSWORD_TOKEN,
+      },
+      privateKey: process.env.JWT_SERCET_EMAIL_VERIFY_TOKEN as string,
+    })
+  }
+  private signForgotPasswordToken(user_id: string) {
+    return signToken({
+      payload: {
+        user_id,
         token_type: TokenType.EmailVerifyToken,
       },
       options: {
-        expiresIn: process.env.EMAIL_VERIFY_TOKEN_EXPIRES_IN,
+        expiresIn: process.env.FORGOT_PASSWORD_TOKEN_EXPIRES_IN,
       },
-      privateKey: process.env.JWT_SERCET_EMAIL_VERIFY_TOKEN as string,
+      privateKey: process.env.JWT_SERCET_FORGOT_PASSWORD_TOKEN as string,
     })
   }
   private signAccessTokenAndRefreshToken(user_id: string) {
@@ -132,6 +144,27 @@ class UsersService {
     )
     return {
       message: 'Resend email verify success',
+    }
+  }
+  async forgotPassword(user_id: string) {
+    const forgot_password_token = await this.signForgotPasswordToken(user_id)
+    await databaseService.users.updateOne(
+      {
+        _id: new ObjectId(user_id),
+      },
+      {
+        $set: {
+          forgot_password_token,
+        },
+        $currentDate: {
+          updated_at: true,
+        },
+      },
+    )
+    // gửi email => ch làm
+    console.log('forgot token : ', forgot_password_token)
+    return {
+      message: 'Forgot password success',
     }
   }
 }
