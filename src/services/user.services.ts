@@ -94,13 +94,18 @@ class UsersService {
       {
         _id: new ObjectId(user_id),
       },
-      {
-        $set: {
-          email_verify_token: '',
-          updated_at: new Date(),
-          verify: UserVerifyStatus.Verified,
+      [
+        {
+          $set: {
+            email_verify_token: '',
+            // updated_at: '$$NOW',
+            verify: UserVerifyStatus.Verified,
+          },
+          $currentDate: {
+            updated_at: true,
+          },
         },
-      },
+      ],
     )
     const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(user_id)
 
