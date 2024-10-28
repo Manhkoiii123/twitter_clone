@@ -154,7 +154,10 @@ export const accessTokenValidator = validate(
               })
             }
             try {
-              const decoded_authorization = await verifyToken({ token: access_token })
+              const decoded_authorization = await verifyToken({
+                token: access_token,
+                privateKey: process.env.JWT_SERCET_ACCESS_TOKEN as string,
+              })
               ;(req as Request).decoded_authorization = decoded_authorization
             } catch (error) {
               throw new ErrorWithStatus({
@@ -181,7 +184,7 @@ export const refreshTokenValidator = validate(
           options: async (value: string, { req }) => {
             try {
               const [decoded_refresh_token, refresh_token] = await Promise.all([
-                verifyToken({ token: value }),
+                verifyToken({ token: value, privateKey: process.env.JWT_SERCET_REFRESH_TOKEN as string }),
                 databaseService.refreshTokens.findOne({ token: value }), //check trong db có ko
               ])
               if (refresh_token === null) {

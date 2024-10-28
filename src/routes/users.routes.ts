@@ -12,12 +12,7 @@ usersRouter.use((req, res, next) => {
   next()
 })
 usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
-/**
- * đăng kí
- * path:/users/register
- * method post
- * body: {name:string,email:string, password:string, confirm_pass:string,date_of_birth:isoString}
- */
 usersRouter.post('/register', registerValidator, wrapRequestHandler(registerController))
 usersRouter.post('/logout', accessTokenValidator, refreshTokenValidator, wrapRequestHandler(logoutController))
+// usersRouter.post("/verify-email",wrapRequestHandler())
 export default usersRouter
