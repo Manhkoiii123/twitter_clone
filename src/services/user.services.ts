@@ -94,24 +94,44 @@ class UsersService {
       {
         _id: new ObjectId(user_id),
       },
-      [
-        {
-          $set: {
-            email_verify_token: '',
-            // updated_at: '$$NOW',
-            verify: UserVerifyStatus.Verified,
-          },
-          $currentDate: {
-            updated_at: true,
-          },
+
+      {
+        $set: {
+          email_verify_token: '',
+          // updated_at: '$$NOW',
+          verify: UserVerifyStatus.Verified,
         },
-      ],
+        $currentDate: {
+          updated_at: true,
+        },
+      },
     )
     const [access_token, refresh_token] = await this.signAccessTokenAndRefreshToken(user_id)
 
     return {
       access_token,
       refresh_token,
+    }
+  }
+  async resendEmailVerify(user_id: string) {
+    const email_verify_token = await this.signEmailVerifyToken(user_id)
+    console.log('🚀 ~ UsersService ~ resendEmailVerify ~ email_verify_token:', email_verify_token)
+    await databaseService.users.updateOne(
+      {
+        _id: new ObjectId(user_id),
+      },
+
+      {
+        $set: {
+          email_verify_token,
+        },
+        $currentDate: {
+          updated_at: true,
+        },
+      },
+    )
+    return {
+      message: 'Resend email verify success',
     }
   }
 }

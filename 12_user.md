@@ -38,13 +38,13 @@ export const emailVerifyTokenValidator = validate(
 khai báo router bên `users.routes`
 
 ```ts
-usersRouter.post('/verify-email', emailVerifyTokenValidator, wrapRequestHandler(emailVerifyValidator))
+usersRouter.post('/verify-email', emailVerifyTokenValidator, wrapRequestHandler(emailVerifyController))
 ```
 
 viết `controller`
 
 ```ts
-export const emailVerifyValidator = async (req: Request, res: Response, next: NextFunction) => {
+export const emailVerifyController = async (req: Request, res: Response, next: NextFunction) => {
   const { user_id } = req.decoded_email_verify_token as TokenPayload
   const user = await databaseService.users.findOne({
     _id: new ObjectId(user_id),
@@ -185,4 +185,67 @@ await databaseService.users.updateOne(
     },
   ],
 )
+```
+
+# Resend verify email
+
+khi người dùng đăng nhập vào, chưa thấy email nào gưi đến => phải có nút gửi lại email cho tôi => phỉa có resend cho ng ta => gửi lại với cái email_veri_token mới là được
+
+method post, ko gửi lên cái gì cả header gửi lên access_token (phải đăng nhập rồi => sang màn verify thì mới có nút resend) là ok rồi
+
+khi check acctoken hợp lệ rồi thì check xem email đấy đã verify hay chưa đã
+
+viết `routers`
+
+```ts
+usersRouter.post('/resend-verify-email', accessTokenValidator, wrapRequestHandler(resendEmailVerifyController))
+```
+
+viết `controller`
+
+```ts
+export const resendEmailVerifyController = async (req: Request, res: Response, next: NextFunction) => {
+  const { user_id } = req.decoded_authorization as TokenPayload
+  const user = await databaseService.users.findOne({
+    _id: new ObjectId(user_id),
+  })
+  if (!user) {
+    return res.status(HTTP_STATUS.NOT_FOUND).json({
+      message: 'User not found',
+    })
+  }
+  if (user.verify === UserVerifyStatus.Verified) {
+    return res.status(HTTP_STATUS.OK).json({
+      message: 'Email already verified',
+    })
+  }
+  const result = await userSevice.resendEmailVerify(user_id)
+  return res.json(result)
+}
+```
+
+viết `service`
+
+```ts
+async resendEmailVerify(user_id: string) {
+    const email_verify_token = await this.signEmailVerifyToken(user_id)
+    console.log('🚀 ~ UsersService ~ resendEmailVerify ~ email_verify_token:', email_verify_token)
+    await databaseService.users.updateOne(
+      {
+        _id: new ObjectId(user_id),
+      },
+
+        {
+          $set: {
+            email_verify_token,
+          },
+          $currentDate: {
+            updated_at: true,
+          },
+        },
+    )
+    return {
+      message: 'Resend email verify success',
+    }
+  }
 ```
