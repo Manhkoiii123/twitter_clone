@@ -137,3 +137,52 @@ khi đó lúc register sẽ sử dụng như sau (chưa có send mail => tạm t
     }
   }
 ```
+
+# Mẹo cập nhật thời gian với $curentDate và $$NOW
+
+trong hàm `verifyEmail` của `user.service` lúc mà update_at = new Date() => đây là tạo khi đoạn code đó chạy, thì cái new date được tạo ra và gửi lên db chứ ko phải thời điểm mà mongo nó cập nhật
+
+có 2 thời điểm => tạo giá trị cập nhật (là cái new Date) và thời điểm mongo cập nhật
+
+nếu muốn thời điểm mongo cập nhật => dùng `$currentDate`
+
+```ts
+async verifyEmail(user_id: string) {
+    await databaseService.users.updateOne(
+      {
+        _id: new ObjectId(user_id),
+      },
+      {
+        $set: {
+          email_verify_token: '',
+          // updated_at: new Date(),
+          verify: UserVerifyStatus.Verified,
+        },
+        $currentDate: {
+          updated_at: true,
+        },
+      },
+    )
+```
+
+cách 2 dùng `NOW`
+
+```ts
+await databaseService.users.updateOne(
+  {
+    _id: new ObjectId(user_id),
+  },
+  [
+    {
+      $set: {
+        email_verify_token: '',
+        updated_at: '$$NOW',
+        verify: UserVerifyStatus.Verified,
+      },
+      // $currentDate: {
+      //   updated_at: true,
+      // },
+    },
+  ],
+)
+```
