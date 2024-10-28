@@ -4,14 +4,14 @@ import { TokenPayload } from '~/models/requests/User.request'
 dotenv.config()
 export const signToken = ({
   payload,
-  privateKey = process.env.JWT_SERCET as string,
+  privateKey,
   options = {
     expiresIn: '1d',
     algorithm: 'HS256',
   },
 }: {
   payload: string | object | Buffer
-  privateKey?: string
+  privateKey: string
   options?: jwt.SignOptions
 }) => {
   return new Promise<string>((resolve, reject) => {
@@ -21,13 +21,7 @@ export const signToken = ({
     })
   })
 }
-export const verifyToken = ({
-  token,
-  privateKey = process.env.JWT_SERCET as string,
-}: {
-  token: string
-  privateKey?: string
-}) => {
+export const verifyToken = ({ token, privateKey }: { token: string; privateKey: string }) => {
   return new Promise<TokenPayload>((resolve, reject) => {
     // hmf veri tham só thứ 3 là options || callback
     jwt.verify(token, privateKey, (error, decoded) => {

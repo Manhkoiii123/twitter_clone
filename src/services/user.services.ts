@@ -18,6 +18,7 @@ class UsersService {
       options: {
         expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
       },
+      privateKey: process.env.JWT_SERCET_ACCESS_TOKEN as string,
     })
   }
   private signRefreshToken(user_id: string) {
@@ -29,6 +30,7 @@ class UsersService {
       options: {
         expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
       },
+      privateKey: process.env.JWT_SERCET_REFRESH_TOKEN as string,
     })
   }
   private signAccessTokenAndRefreshToken(user_id: string) {
