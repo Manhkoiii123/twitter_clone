@@ -6,6 +6,7 @@ import {
   LoginReqBody,
   LogoutReqBody,
   RegisterReqBody,
+  ResetPasswordReqBody,
   TokenPayload,
   VerifyEmailReqBody,
   VerifyForgorPasswordReqBody,
@@ -112,4 +113,14 @@ export const verifyForgotPasswordController = async (
   return res.json({
     message: 'Verify forgot password success',
   })
+}
+export const resetPasswordController = async (
+  req: Request<ParamsDictionary, any, ResetPasswordReqBody>,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { password } = req.body
+  const { user_id } = req.decoded_forgot_password_token as TokenPayload
+  const result = await userSevice.resetPassword(user_id, password)
+  return res.json(result)
 }
