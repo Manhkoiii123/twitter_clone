@@ -267,6 +267,24 @@ class UsersService {
       message: 'Already following this user.',
     }
   }
+  async unfollow(user_id: string, followed_user_id: string) {
+    const follower = await databaseService.followers.findOne({
+      user_id: new ObjectId(user_id),
+      followed_user_id: new ObjectId(followed_user_id),
+    })
+    if (follower === null) {
+      return {
+        message: 'Already not following this user.',
+      }
+    }
+    await databaseService.followers.deleteOne({
+      user_id: new ObjectId(user_id),
+      followed_user_id: new ObjectId(followed_user_id),
+    })
+    return {
+      message: 'unfollow success',
+    }
+  }
 }
 const userSevice = new UsersService()
 export default userSevice
