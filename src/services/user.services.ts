@@ -7,6 +7,7 @@ import databaseService from '~/services/database.service'
 import { hashPassword } from '~/utils/crypto'
 import { signToken } from '~/utils/jwt'
 import dotenv from 'dotenv'
+import { PassThrough } from 'stream'
 dotenv.config()
 class UsersService {
   private signAccessToken(user_id: string) {
@@ -185,6 +186,21 @@ class UsersService {
     return {
       message: 'Reset password success',
     }
+  }
+  async me(user_id: string) {
+    const user = await databaseService.users.findOne(
+      {
+        _id: new ObjectId(user_id),
+      },
+      {
+        projection: {
+          password: 0,
+          forgot_password_token: 0,
+          email_verify_token: 0,
+        },
+      },
+    )
+    return user
   }
 }
 const userSevice = new UsersService()
