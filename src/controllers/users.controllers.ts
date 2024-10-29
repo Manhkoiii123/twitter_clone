@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express'
 import userSevice from '~/services/user.services'
 import { ParamsDictionary } from 'express-serve-static-core'
 import {
+  followReqBody,
   ForgorPasswordReqBody,
   LoginReqBody,
   LogoutReqBody,
@@ -164,4 +165,15 @@ export const updateMeController = async (
     message: 'Update me success',
     user,
   })
+}
+export const followController = async (
+  req: Request<ParamsDictionary, any, followReqBody>,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { user_id } = req.decoded_authorization as TokenPayload
+
+  const { followed_user_id } = req.body
+  const result = await userSevice.follow(user_id, followed_user_id)
+  return res.json(result)
 }
