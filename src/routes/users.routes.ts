@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   emailVerifyController,
+  followController,
   forgorPasswordController,
   loginController,
   logoutController,
@@ -15,6 +16,7 @@ import { filterMiddleware } from '~/middlewares/common.middleware'
 import {
   accessTokenValidator,
   emailVerifyTokenValidator,
+  followValidator,
   forgotPasswordValidator,
   loginValidator,
   refreshTokenValidator,
@@ -59,5 +61,12 @@ usersRouter.patch(
     'cover_photo',
   ]),
   wrapRequestHandler(updateMeController),
+)
+usersRouter.post(
+  '/follow',
+  accessTokenValidator,
+  verifiedUserValidator,
+  followValidator,
+  wrapRequestHandler(followController),
 )
 export default usersRouter

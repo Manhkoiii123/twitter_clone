@@ -8,6 +8,7 @@ import { hashPassword } from '~/utils/crypto'
 import { signToken } from '~/utils/jwt'
 import dotenv from 'dotenv'
 import { PassThrough } from 'stream'
+import Follower from '~/models/schemas/Follower.schema'
 dotenv.config()
 class UsersService {
   private signAccessToken({ user_id, verify }: { user_id: string; verify: UserVerifyStatus }) {
@@ -245,6 +246,26 @@ class UsersService {
       },
     )
     return user
+  }
+  async follow(user_id: string, followed_user_id: string) {
+    const follower = await databaseService.followers.findOne({
+      user_id: new ObjectId(user_id),
+      followed_user_id: new ObjectId(followed_user_id),
+    })
+    if (follower === null) {
+      await databaseService.followers.insertOne(
+        new Follower({
+          user_id: new ObjectId(user_id),
+          followed_user_id: new ObjectId(followed_user_id),
+        }),
+      )
+      return {
+        message: 'Follow success',
+      }
+    }
+    return {
+      message: 'Already following this user.',
+    }
   }
 }
 const userSevice = new UsersService()
