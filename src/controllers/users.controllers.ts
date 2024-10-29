@@ -17,6 +17,7 @@ import databaseService from '~/services/database.service'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ObjectId } from 'mongodb'
 import { UserVerifyStatus } from '~/constants/enums'
+import { pick } from 'lodash'
 export const loginController = async (req: Request<ParamsDictionary, any, LoginReqBody>, res: Response) => {
   const user = req.user as User
   const { _id } = user
@@ -145,7 +146,19 @@ export const updateMeController = async (
   next: NextFunction,
 ) => {
   const { user_id } = req.decoded_authorization as TokenPayload
-  const body = req.body
+  // cách 1 dùng lodash để lọc ra các trường gửi lên thôi. gửi lên linh tinh cũng ko nhận
+  //cách 2 dùng middlewares (bên routes)
+  const body = pick(req.body, [
+    'name',
+    'date_of_birth',
+    'bio',
+    'location',
+    'website',
+    'username',
+    'avatar',
+    'cover_photo',
+  ])
+  // const body = req.body
   const user = await userSevice.updateMe(user_id, body)
   return res.json({
     message: 'Update me success',
