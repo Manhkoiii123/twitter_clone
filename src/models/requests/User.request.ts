@@ -49,3 +49,8 @@ export interface followReqBody {
 export interface unfollowReqParams extends ParamsDictionary {
   user_id: string
 }
+export interface changePasswordBody {
+  old_password: string
+  new_password: string
+  new_confirm_password: string
+}

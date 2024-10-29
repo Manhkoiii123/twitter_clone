@@ -480,6 +480,21 @@ export const updateMeValidator = validate(
           options: { min: 1, max: 50 },
           errorMessage: 'Username must be between 1 and 50 characters',
         },
+        custom: {
+          options: async (value, { req }) => {
+            const regex = /^(?![0-9]+$)[A-Za-z0-9_]{4,15}$/
+            if (!regex.test(value)) {
+              throw new ErrorWithStatus({
+                message: 'Username is invalid',
+                status: HTTP_STATUS.BAD_REQUEST,
+              })
+            }
+            const user = await databaseService.users.findOne({ username: value })
+            if (user) {
+              throw Error('User already existed')
+            }
+          },
+        },
       },
       avatar: {
         optional: true,
@@ -554,4 +569,75 @@ export const unfollowValidator = validate(
     },
     ['params'],
   ),
+)
+export const changePasswordValidator = validate(
+  checkSchema({
+    old_password: {
+      notEmpty: true,
+      isString: true,
+      isLength: {
+        options: { min: 6, max: 100 },
+        errorMessage: 'Password must be between 6 and 100 characters',
+      },
+      isStrongPassword: {
+        options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+      },
+      errorMessage:
+        'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+      custom: {
+        options: async (value, { req }) => {
+          const { user_id } = req.decoded_authorization as TokenPayload
+          const user = await databaseService.users.findOne({ _id: new ObjectId(user_id) })
+          if (!user) {
+            throw new ErrorWithStatus({
+              message: 'User not found',
+              status: HTTP_STATUS.NOT_FOUND,
+            })
+          }
+          const { password } = user
+          const isMatch = hashPassword(value) === password
+          if (!isMatch) {
+            throw new ErrorWithStatus({
+              message: 'Old password is incorrect',
+              status: HTTP_STATUS.UNAUTHORIZED,
+            })
+          }
+        },
+      },
+    },
+    new_password: {
+      notEmpty: true,
+      isString: true,
+      isLength: {
+        options: { min: 6, max: 100 },
+        errorMessage: 'Password must be between 6 and 100 characters',
+      },
+      isStrongPassword: {
+        options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+      },
+      errorMessage:
+        'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+    },
+    new_confirm_password: {
+      notEmpty: true,
+      isString: true,
+      isLength: {
+        options: { min: 6, max: 100 },
+        errorMessage: 'Password must be between 6 and 100 characters',
+      },
+      isStrongPassword: {
+        options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+      },
+      errorMessage:
+        'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+      custom: {
+        options: (value, { req }) => {
+          if (value !== req.body.new_password) {
+            throw new Error('Password confirm does not match password')
+          }
+          return true
+        },
+      },
+    },
+  }),
 )
