@@ -422,3 +422,15 @@ export const verifyForgotPasswordController = async (req: Request, res: Response
   })
 }
 ```
+
+# mongodb Schema validation
+
+cái này để validation khi dùng mongocompass (chạy trên trực tiếp db)
+
+đã validation ở phía middleware rồi => vẫn cần 1 cái validation bên cái schema nữa ( để đỡ chèn thừa + sai dữ liệu bên phía db)
+
+docs [text](https://www.mongodb.com/docs/manual/core/schema-validation/specify-json-schema/)
+
+# code logic veriiedUserValidator
+
+update người dùng thì cần validate cái dữ liệu gửi lên đó, cần validate cái access_token => done, phải validator thêm 1 cái là đã verify tài khoản đó chưa => thêm 1 cái verify vào cái decode_authorization để dùng
