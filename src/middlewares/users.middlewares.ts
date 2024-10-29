@@ -332,3 +332,90 @@ export const verifyForgotPasswordValidator = validate(
     ['body'],
   ),
 )
+export const resetPasswordValidator = validate(
+  checkSchema(
+    {
+      password: {
+        notEmpty: true,
+        isString: true,
+        isLength: {
+          options: { min: 6, max: 100 },
+          errorMessage: 'Password must be between 6 and 100 characters',
+        },
+        isStrongPassword: {
+          options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+        },
+        errorMessage:
+          'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+      },
+      confirm_password: {
+        notEmpty: true,
+        isString: true,
+        isLength: {
+          options: { min: 6, max: 100 },
+          errorMessage: 'Password must be between 6 and 100 characters',
+        },
+        isStrongPassword: {
+          options: { minLength: 6, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 },
+        },
+        errorMessage:
+          'Password must be at least 6 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number, and 1 symbol',
+        custom: {
+          options: (value, { req }) => {
+            if (value !== req.body.password) {
+              throw new Error('Password confirm does not match password')
+            }
+            return true
+          },
+        },
+      },
+      forgot_password_token: {
+        trim: true,
+        custom: {
+          options: async (value: string, { req }) => {
+            if (!value) {
+              throw new ErrorWithStatus({
+                message: 'ForgotPasswordToken is required',
+                status: HTTP_STATUS.UNAUTHORIZED,
+              })
+            }
+            try {
+              const decoded_forgot_password_token = await verifyToken({
+                token: value,
+                privateKey: process.env.JWT_SERCET_FORGOT_PASSWORD_TOKEN as string,
+              })
+              const { user_id } = decoded_forgot_password_token
+              const user = await databaseService.users.findOne({ _id: new ObjectId(user_id) }) //check trong db có ko
+
+              if (user === null) {
+                //ko thấy trong db
+                throw new ErrorWithStatus({
+                  message: 'User not found',
+                  status: HTTP_STATUS.NOT_FOUND,
+                })
+              }
+              if (user.forgot_password_token !== value) {
+                throw new ErrorWithStatus({
+                  message: 'ForgotPasswordToken is invalid',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+              req.decoded_forgot_password_token = decoded_forgot_password_token
+            } catch (error) {
+              // nếu ko xử lí thế này mà để mỗi 3 dòng throw trong if thì nó luôn rơi vào case này
+              // muốn bắt cả case đã sử dụng ở trên (do nếu lỗi ở trên thì nó cũng tự rơi vào catch)
+              if (error instanceof JsonWebTokenError) {
+                throw new ErrorWithStatus({
+                  message: 'ForgotPasswordToken is invalid',
+                  status: HTTP_STATUS.UNAUTHORIZED,
+                })
+              }
+              throw error
+            }
+          },
+        },
+      },
+    },
+    ['body'],
+  ),
+)
