@@ -1,10 +1,12 @@
-import { Request } from 'express'
+import { NextFunction, Request, Response } from 'express'
 import { checkSchema } from 'express-validator'
 import { JsonWebTokenError } from 'jsonwebtoken'
 import { capitalize } from 'lodash'
 import { ObjectId } from 'mongodb'
+import { UserVerifyStatus } from '~/constants/enums'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ErrorWithStatus } from '~/models/Errors'
+import { TokenPayload } from '~/models/requests/User.request'
 import databaseService from '~/services/database.service'
 import userSevice from '~/services/user.services'
 import { hashPassword } from '~/utils/crypto'
@@ -413,6 +415,88 @@ export const resetPasswordValidator = validate(
               throw error
             }
           },
+        },
+      },
+    },
+    ['body'],
+  ),
+)
+export const verifiedUserValidator = (req: Request, res: Response, next: NextFunction) => {
+  const { verify } = req.decoded_authorization as TokenPayload
+  if (verify !== UserVerifyStatus.Verified) {
+    return next(
+      new ErrorWithStatus({
+        message: 'User is not verified',
+        status: HTTP_STATUS.FORBIDDEN,
+      }),
+    )
+  }
+  next()
+}
+export const updateMeValidator = validate(
+  checkSchema(
+    {
+      name: {
+        optional: true,
+        isString: true,
+        isLength: {
+          options: { min: 1, max: 100 },
+          errorMessage: 'Name must be between 1 and 100 characters',
+        },
+        trim: true,
+      },
+      date_of_birth: {
+        optional: true,
+        isISO8601: {
+          options: {
+            strict: true,
+            strictSeparator: true,
+          },
+        },
+      },
+      bio: {
+        optional: true,
+        isString: true,
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 500 },
+          errorMessage: 'Bio must be between 1 and 500 characters',
+        },
+      },
+      website: {
+        optional: true,
+        isString: true,
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 200 },
+          errorMessage: 'Website must be between 1 and 200 characters',
+        },
+      },
+      username: {
+        optional: true,
+        isString: true,
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 50 },
+          errorMessage: 'Username must be between 1 and 50 characters',
+        },
+      },
+      avatar: {
+        optional: true,
+        isString: true,
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 400 },
+          errorMessage: 'Avatar must be between 1 and 400 characters',
+        },
+      },
+      cover_photo: {
+        optional: true,
+        isString: true,
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 400 },
+          errorMessage: 'Avatar must be between 1 and 400 characters',
         },
       },
     },

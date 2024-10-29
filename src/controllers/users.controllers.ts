@@ -8,6 +8,7 @@ import {
   RegisterReqBody,
   ResetPasswordReqBody,
   TokenPayload,
+  updateMeReqBody,
   VerifyEmailReqBody,
   VerifyForgorPasswordReqBody,
 } from '~/models/requests/User.request'
@@ -19,7 +20,10 @@ import { UserVerifyStatus } from '~/constants/enums'
 export const loginController = async (req: Request<ParamsDictionary, any, LoginReqBody>, res: Response) => {
   const user = req.user as User
   const { _id } = user
-  const ans = await userSevice.login(_id.toString())
+  const ans = await userSevice.login({
+    user_id: _id.toString(),
+    verify: user.verify,
+  })
   return res.json({
     message: 'login success',
     ans,
@@ -101,7 +105,10 @@ export const forgorPasswordController = async (
   next: NextFunction,
 ) => {
   const { _id } = req.user as User
-  const result = await userSevice.forgotPassword(_id.toString())
+  const result = await userSevice.forgotPassword({
+    user_id: _id.toString(),
+    verify: req.user!.verify,
+  })
   return res.json(result)
 }
 
@@ -130,5 +137,18 @@ export const meController = async (req: Request<ParamsDictionary, any, any>, res
   return res.json({
     message: 'Get me success',
     result,
+  })
+}
+export const updateMeController = async (
+  req: Request<ParamsDictionary, any, updateMeReqBody>,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { user_id } = req.decoded_authorization as TokenPayload
+  const body = req.body
+  const user = await userSevice.updateMe(user_id, body)
+  return res.json({
+    message: 'Update me success',
+    user,
   })
 }
