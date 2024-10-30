@@ -1,3 +1,4 @@
+import { config } from 'dotenv'
 import express from 'express'
 import { defaultErrorHandler } from '~/middlewares/errorMiddleware'
 import mediasRoute from '~/routes/medias.routes'
@@ -5,8 +6,9 @@ import usersRouter from '~/routes/users.routes'
 import databaseService from '~/services/database.services'
 import { initFolder } from '~/utils/file'
 const app = express()
-const port = 3000
 
+config()
+const port = process.env.PORT || 3000
 // taọ folder uplaod
 initFolder()
 app.use(express.json()) // là 1 cái middleware cái ex.json sẽ đưa cái json truyền lên ở body thành 1 cái obj
