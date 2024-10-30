@@ -5,5 +5,8 @@ import mediasService from '~/services/media.services'
 // console.log(path.resolve(''))
 export const uploadSingleImageController = async (req: Request, res: Response, next: NextFunction) => {
   const data = await mediasService.handleUploadSingleImage(req)
-  return res.json({ data })
+  return res.json({
+    message: 'Upload single image successfully',
+    data,
+  })
 }
