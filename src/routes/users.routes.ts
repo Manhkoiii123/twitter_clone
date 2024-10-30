@@ -7,6 +7,7 @@ import {
   loginController,
   logoutController,
   meController,
+  oauthController,
   registerController,
   resendEmailVerifyController,
   resetPasswordController,
@@ -87,4 +88,5 @@ usersRouter.put(
   changePasswordValidator,
   wrapRequestHandler(changePasswordController),
 )
+usersRouter.get('/oauth/google', wrapRequestHandler(oauthController))
 export default usersRouter
