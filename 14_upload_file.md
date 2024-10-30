@@ -93,3 +93,17 @@ class MediasService {
   }
 }
 ```
+
+# Serving static file
+
+trả về link ảnh rồi, mà ấn vào thì nó ch ra link ảnh => làm sao để ấn ra link ảnh
+
+khi link anhr trả về dạng `http://localhost:3000/medias/4176a8179c05b0a84a6c84900.jpg`
+
+thì thêm dòng này vào file `index.ts`
+
+```ts
+app.use(`/medias`, express.static(path.resolve('uploads')))
+```
+
+khi đó ấn vào ảnh là ra ảnh đó luôn
