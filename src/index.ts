@@ -2,7 +2,7 @@ import express from 'express'
 import { defaultErrorHandler } from '~/middlewares/errorMiddleware'
 import mediasRoute from '~/routes/medias.routes'
 import usersRouter from '~/routes/users.routes'
-import databaseService from '~/services/database.service'
+import databaseService from '~/services/database.services'
 import { initFolder } from '~/utils/file'
 const app = express()
 const port = 3000

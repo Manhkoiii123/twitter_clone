@@ -16,7 +16,7 @@ import {
   VerifyForgorPasswordReqBody,
 } from '~/models/requests/User.request'
 import User from '~/models/schemas/User.schema'
-import databaseService from '~/services/database.service'
+import databaseService from '~/services/database.services'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ObjectId } from 'mongodb'
 import { UserVerifyStatus } from '~/constants/enums'
