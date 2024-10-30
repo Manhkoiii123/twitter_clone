@@ -107,3 +107,7 @@ app.use(`/medias`, express.static(path.resolve('uploads')))
 ```
 
 khi đó ấn vào ảnh là ra ảnh đó luôn
+
+## cách khác xử lí Serving static file (thường làm hơn)
+
+tạo `/routes/static.routes.ts`,`controllers/static.controllers.ts` => đọc code là ok
