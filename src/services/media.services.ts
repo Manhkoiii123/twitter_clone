@@ -17,8 +17,8 @@ class MediasService {
     // xóa file tmp
     fs.unlinkSync(file.filepath)
     return isProduction
-      ? `${process.env.HOST}/medias/${newPath}.jpg`
-      : `http://localhost:${process.env.PORT}/medias/${newPath}.jpg`
+      ? `${process.env.HOST}/static/image/${newPath}.jpg`
+      : `http://localhost:${process.env.PORT}/static/image/${newPath}.jpg`
   }
 }
 const mediasService = new MediasService()
