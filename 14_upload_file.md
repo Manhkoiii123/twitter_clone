@@ -111,3 +111,7 @@ khi đó ấn vào ảnh là ra ảnh đó luôn
 ## cách khác xử lí Serving static file (thường làm hơn)
 
 tạo `/routes/static.routes.ts`,`controllers/static.controllers.ts` => đọc code là ok
+
+# Upload multiple image
+
+up nhiều ảnh cũng tt up 1 ảnh => sửa hàm up 1 ảnh
