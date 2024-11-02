@@ -115,3 +115,7 @@ tạo `/routes/static.routes.ts`,`controllers/static.controllers.ts` => đọc c
 # Upload multiple image
 
 up nhiều ảnh cũng tt up 1 ảnh => sửa hàm up 1 ảnh
+
+# Upload video
+
+tuowng tuwj
