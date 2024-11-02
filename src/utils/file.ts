@@ -2,6 +2,7 @@ import { Request } from 'express'
 import formidable, { File } from 'formidable'
 import fs from 'fs'
 import path from 'path'
+
 export const initFolder = () => {
   ;[path.resolve('uploads/images/temp'), path.resolve('uploads/videos/temp')].forEach((dir) => {
     if (!fs.existsSync(dir)) {
@@ -27,6 +28,7 @@ export const handleUploadImage = async (req: Request) => {
       if (!valid) {
         form.emit('error' as any, new Error('File type is not valid') as any)
       }
+
       return valid
     },
   })
@@ -51,7 +53,11 @@ export const handleUploadVideo = async (req: Request) => {
     maxFileSize: 50 * 1024 * 1024, // 300kb
     //sau khi bỏ cái keepExtensions thì nó sẽ ko lấy đuôi mở rộng của file => handle việc lấy đuôi => rename file đó
     filter: function ({ name, originalFilename, mimetype }) {
-      return true
+      const valid = name === 'video' && Boolean(mimetype?.includes('video/') || mimetype?.includes('video/mp4'))
+      if (!valid) {
+        form.emit('error' as any, new Error('File type is not valid') as any)
+      }
+      return valid
     },
   })
   return new Promise<File[]>((resolve, reject) => {
