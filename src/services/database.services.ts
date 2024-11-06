@@ -30,6 +30,26 @@ class DatabaseService {
       // await this.client.close()
     }
   }
+  async indexUsers() {
+    this.users.createIndex({ email: 1, password: 1 })
+    this.users.createIndex({ email: 1 }, { unique: true })
+    this.users.createIndex({ username: 1 }, { unique: true })
+  }
+  indexRefreshTokens() {
+    this.refreshTokens.createIndex({ token: 1 })
+    this.refreshTokens.createIndex(
+      { exp: 1 },
+      {
+        expireAfterSeconds: 0,
+      },
+    )
+  }
+  indexFollowers() {
+    this.followers.createIndex({ user_id: 1, followered_user_id: 1 })
+  }
+  indexVideoStatus() {
+    this.users.createIndex({ name: 1 })
+  }
   get users(): Collection<User> {
     return this.db.collection(process.env.DB_USER_COLLECTION as string)
   }

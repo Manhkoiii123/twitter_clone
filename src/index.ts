@@ -18,7 +18,12 @@ app.use('/users', usersRouter)
 app.use('/medias', mediasRoute)
 // app.use(`/medias`, express.static(path.resolve('uploads')))
 app.use('/static', staticRoute)
-databaseService.connect()
+databaseService.connect().then(() => {
+  databaseService.indexUsers()
+  databaseService.indexRefreshTokens()
+  databaseService.indexVideoStatus()
+  databaseService.indexFollowers()
+})
 app.use(defaultErrorHandler)
 app.listen(port, () => {
   console.log(`app is running in port ${port}`)
