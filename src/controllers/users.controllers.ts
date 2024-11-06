@@ -7,6 +7,7 @@ import {
   ForgorPasswordReqBody,
   LoginReqBody,
   LogoutReqBody,
+  RefreshTokenReqBody,
   RegisterReqBody,
   ResetPasswordReqBody,
   TokenPayload,
@@ -203,4 +204,17 @@ export const oauthController = async (req: Request<any, any, any>, res: Response
   const result = await userSevice.oauth(code as string)
   const urlRedirect = `${process.env.CLIENT_REDIRECT_CALLBACK as string}?access_token=${result.access_token}&refresh_token=${result.refresh_token}&newUser=${result.newUser}&verify=${result.verify}`
   return res.redirect(urlRedirect)
+}
+export const refreshTokenController = async (
+  req: Request<any, any, RefreshTokenReqBody>,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { user_id, verify } = req.decoded_refresh_token as TokenPayload
+  const { refresh_token } = req.body
+  const result = await userSevice.refreshToken(user_id, verify, refresh_token)
+  return res.json({
+    message: 'refreshToken success',
+    result,
+  })
 }

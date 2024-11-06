@@ -434,3 +434,7 @@ docs [text](https://www.mongodb.com/docs/manual/core/schema-validation/specify-j
 # code logic veriiedUserValidator
 
 update người dùng thì cần validate cái dữ liệu gửi lên đó, cần validate cái access_token => done, phải validator thêm 1 cái là đã verify tài khoản đó chưa => thêm 1 cái verify vào cái decode_authorization để dùng
+
+# refresh token
+
+get 1 cái api nào đó mà bị lỗi access_token => refresh_token => lấy lại access_token => gửi lên ref => decode nó ra => lấy ra được userId => tạo 1 access_token, refresh_token mới, xóa 2 cái cũ đi là ok => gửi lại cho client

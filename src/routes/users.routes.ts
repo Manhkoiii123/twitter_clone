@@ -8,6 +8,7 @@ import {
   logoutController,
   meController,
   oauthController,
+  refreshTokenController,
   registerController,
   resendEmailVerifyController,
   resetPasswordController,
@@ -89,4 +90,6 @@ usersRouter.put(
   wrapRequestHandler(changePasswordController),
 )
 usersRouter.get('/oauth/google', wrapRequestHandler(oauthController))
+
+usersRouter.post('/refresh-token', refreshTokenValidator, wrapRequestHandler(refreshTokenController))
 export default usersRouter
