@@ -90,3 +90,18 @@ export default class Tweet {
   }
 }
 ```
+
+# validate tweet body
+
+nếu mà để validate 100% case của tweet thì tốn thời gian => validate case chính
+
+- `type` là 1 trong 4 cái `tweet`, `comment`, `retweet`, `quote` (enum)
+
+- `audience` là 1 trong 2 cái enum
+
+- nếu `type` là `comment`, `retweet`, `quote` thì phải có `parent_id` phải là `tweet_id` của tweet cha, còn lại là `tweet` thì ko cần `parent_id` (null)
+
+- nếu `type` là retweet thì `content` để trống. Nếu là comment, quote và tweet mà ko có `mentions` và `hashtags` thì `content` phải là string ko được rỗng
+- `medias` là mảng các media
+- `mentions` là mảng các string dạng id
+- `hashtags` là mảng các string
