@@ -114,3 +114,5 @@ nếu mà để validate 100% case của tweet thì tốn thời gian => validat
 - `medias` là mảng các media
 - `mentions` là mảng các string dạng id
 - `hashtags` là mảng các string
+
+# tạo hashtag collection
