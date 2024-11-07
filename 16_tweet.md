@@ -14,6 +14,15 @@ interface TweetRequestBody {
   // guest_views: number // ko để ng dùng gửi lên được
   // user_views: number // ko để ng dùng gửi lên được
 }
+// interface TweetRequestBody {
+//   type: TweetType
+//   audience: TweetAudience
+//   content: string
+//   parent_id: string | null
+//   hashtags: string[] thì tạo hashtag collection)
+//   mentions: string[]
+//   medias: Media[]
+// }
 ```
 
 khi upload media thì phải có các thông tin sau => upload media => trả ra 1 cái arr media rồi add vào tweet => gửi lên
