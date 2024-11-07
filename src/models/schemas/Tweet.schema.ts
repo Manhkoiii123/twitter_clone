@@ -8,12 +8,12 @@ interface TweetConstructor {
   type: TweetType
   audience: TweetAudience
   content: string
-  parent_id: ObjectId | null
+  parent_id: string | null
   hashtags: ObjectId[]
-  mentions: ObjectId[]
+  mentions: string[]
   medias: Media[]
-  guest_views: number
-  user_views: number
+  guest_views?: number
+  user_views?: number
   created_at?: Date
   updated_at?: Date
 }
@@ -27,8 +27,8 @@ export default class Tweet {
   hashtags: ObjectId[]
   mentions: ObjectId[]
   medias: Media[]
-  guest_views: number
-  user_views: number
+  guest_views?: number
+  user_views?: number
   created_at: Date
   updated_at: Date
   constructor({
@@ -52,9 +52,9 @@ export default class Tweet {
     this.type = type
     this.audience = audience
     this.content = content
-    this.parent_id = parent_id
+    this.parent_id = parent_id ? new ObjectId(parent_id) : null
     this.hashtags = hashtags
-    this.mentions = mentions
+    this.mentions = mentions.map((mention) => new ObjectId(mention))
     this.medias = medias
     this.guest_views = guest_views || 0
     this.user_views = user_views || 0
