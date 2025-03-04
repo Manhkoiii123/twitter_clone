@@ -2,6 +2,7 @@ import { config } from 'dotenv'
 import express from 'express'
 import path from 'path'
 import { defaultErrorHandler } from '~/middlewares/errorMiddleware'
+import bookmarkRoute from '~/routes/bookmark.routes'
 import mediasRoute from '~/routes/medias.routes'
 import staticRoute from '~/routes/static.routes'
 import tweetsRouter from '~/routes/tweets.routes'
@@ -18,6 +19,7 @@ app.use(express.json()) // là 1 cái middleware cái ex.json sẽ đưa cái js
 app.use('/users', usersRouter)
 app.use('/medias', mediasRoute)
 app.use('/tweets', tweetsRouter)
+app.use('/bookmarks', bookmarkRoute)
 // app.use(`/medias`, express.static(path.resolve('uploads')))
 app.use('/static', staticRoute)
 databaseService.connect().then(() => {
