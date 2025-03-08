@@ -116,3 +116,9 @@ nếu mà để validate 100% case của tweet thì tốn thời gian => validat
 - `hashtags` là mảng các string
 
 # tạo hashtag collection
+
+done code
+
+# get tweet details
+
+cái tweet nó đang có cái audiences (là ng là có thể xem được bài này thường là 150 người) => ko cần 1 table riêng của twitter_circle => đưa luôn vào trong cái user_schema là được (nhúng)

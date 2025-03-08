@@ -46,9 +46,9 @@ class UsersService {
         token_type: TokenType.ForgotPasswordToken,
       },
       options: {
-        expiresIn: process.env.FORGOT_PASSWORD_TOKEN_EXPIRES_IN,
+        expiresIn: process.env.EMAIL_VERIFY_TOKEN_EXPIRES_IN,
       },
-      privateKey: process.env.JWT_SERCET_FORGOT_PASSWORD_TOKEN as string,
+      privateKey: process.env.JWT_SERCET_EMAIL_VERIFY_TOKEN as string,
     })
   }
   private signForgotPasswordToken({ user_id, verify }: { user_id: string; verify: UserVerifyStatus }) {

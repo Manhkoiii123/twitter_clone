@@ -235,7 +235,6 @@ export const emailVerifyTokenValidator = validate(
                 token: value,
                 privateKey: process.env.JWT_SERCET_EMAIL_VERIFY_TOKEN as string,
               })
-
               ;(req as Request).decoded_email_verify_token = decoded_email_verify_token
             } catch (error) {
               if (error instanceof JsonWebTokenError) {

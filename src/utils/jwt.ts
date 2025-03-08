@@ -25,6 +25,7 @@ export const verifyToken = ({ token, privateKey }: { token: string; privateKey: 
   return new Promise<TokenPayload>((resolve, reject) => {
     // hmf veri tham só thứ 3 là options || callback
     jwt.verify(token, privateKey, (error, decoded) => {
+      console.log('🚀 ~ jwt.verify ~ error:', error)
       if (error) throw reject(error)
       resolve(decoded as TokenPayload)
     })

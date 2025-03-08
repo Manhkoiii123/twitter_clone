@@ -36,7 +36,6 @@ class DatabaseService {
   async indexUsers() {
     this.users.createIndex({ email: 1, password: 1 })
     this.users.createIndex({ email: 1 }, { unique: true })
-    this.users.createIndex({ username: 1 }, { unique: true })
   }
   indexRefreshTokens() {
     this.refreshTokens.createIndex({ token: 1 })
