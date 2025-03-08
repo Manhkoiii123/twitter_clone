@@ -1,10 +1,13 @@
+import { NextFunction, Request, Response } from 'express'
 import { checkSchema } from 'express-validator'
 import { isEmpty } from 'lodash'
 import { ObjectId } from 'mongodb'
-import { MediaType, TweetAudience, TweetType } from '~/constants/enums'
+import { MediaType, TweetAudience, TweetType, UserVerifyStatus } from '~/constants/enums'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ErrorWithStatus } from '~/models/Errors'
+import Tweet from '~/models/schemas/Tweet.schema'
 import databaseService from '~/services/database.services'
+import { wrapRequestHandler } from '~/utils/handlers'
 import { numberEnumToArray } from '~/utils/orther'
 import { validate } from '~/utils/validation'
 
@@ -124,6 +127,8 @@ export const tweetIdValidator = validate(
                 message: 'Tweet not found',
               })
             }
+            ;(req as Request).tweet = tweet
+            return true
           },
         },
       },
@@ -131,3 +136,37 @@ export const tweetIdValidator = validate(
     ['params', 'body'],
   ),
 )
+//  muốn dùng async await thì phải có try catch || wrapRequestHandler
+export const audienceValidator = wrapRequestHandler(async (req: Request, res: Response, next: NextFunction) => {
+  // cần cái tweet => để lấy ra được cái tw.audience => trong cái twIdValidator đã có cái findOne rồi => gán nó vào cái req => ko cần query lại nữa
+  const tweet = req.tweet as Tweet
+  if (tweet.audience === TweetAudience.TwitterCircle) {
+    // kiểm tra ng xem tweet này đã đăng nhập hay chưa
+    if (!req.decoded_authorization) {
+      throw new ErrorWithStatus({
+        status: HTTP_STATUS.UNAUTHORIZED,
+        message: 'You are not logged in',
+      })
+    }
+    // kiểm tra tài khoản tác giả có ổn (bị khóa hay bị xóa chưa)
+    const author = await databaseService.users.findOne({
+      _id: new ObjectId(tweet.user_id),
+    })
+    if (!author || author.verify === UserVerifyStatus.Banned) {
+      throw new ErrorWithStatus({
+        status: HTTP_STATUS.NOT_FOUND,
+        message: "User doesn't exist",
+      })
+    }
+    // kiểm tra xem ng xem tweet này có trong tweet circle của tác giả hay ko
+    const { user_id } = req.decoded_authorization
+    const isInCircle = author.twitter_circle.some((i) => i.equals(user_id))
+    if (!isInCircle && !author._id.equals(user_id)) {
+      throw new ErrorWithStatus({
+        status: HTTP_STATUS.FORBIDDEN,
+        message: 'You are not in the circle',
+      })
+    }
+  }
+  next()
+})
